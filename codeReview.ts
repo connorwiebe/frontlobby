@@ -1,15 +1,21 @@
 //
 // Weighted Directed Cyclic Graph
 //
-export default class DCGraph<N extends Node> {
+// allow DCGraph to be instantiated with any type
+export default class DCGraph<N extends Node<T>, T = any> {
 	private nodes: N[];
+
+	// we need to add a constructor here to initialize the nodes array
+	constructor() {
+		this.nodes = [];
+	}
 
 	// size of the graph
 	get size() {
 		return this.nodes.length;
 	}
 
-	addNode(value: any);
+	// removed duplicate addNode method
 	addNode(node: N | any) {
 		if (!(node instanceof Node)) {
 			node = new Node(node);	// node must be the value
@@ -21,8 +27,10 @@ export default class DCGraph<N extends Node> {
 	}
 
 	// calls callback with each node in graph
-	async WalkGraph(callback: (node: Node) => boolean) {
+	// added type annotation
+	async WalkGraph(callback: (node: Node<T>) => boolean) {
 		for (let a=0; a<this.nodes.length; a++) {
+			// consider not using await inside if statements
 			if ((await callback(this.nodes[a])) === false) {
 				return false; // exit early
 			}
@@ -33,12 +41,15 @@ export default class DCGraph<N extends Node> {
 	detectCycle(): Promise<boolean> {
 		let result = false;
 
-		this.WalkGraph(node => {
+		// this method expects a return value of Promise<boolean>
+		return this.WalkGraph(node => {
 			if (node.visited) {
 				result = true;	// cycle detected!!
 				return false;	// early exit from the walk
 			}
 			node.visited = true;
+			// return true was missing here so we can continue walking
+			return true;
 		})
 		.then(function () {
 			return result;
@@ -47,27 +58,38 @@ export default class DCGraph<N extends Node> {
 }
 
 class Node<T> {
-	value: T;
-	edges: Edge[];
+	// allow for value to potentially be undefined
+	value: T | undefined;
+	// added type annotation
+	edges: Edge<T>[];
+	// added visited property
+	visited: boolean = false;
 
-	constructor(newValue?) {
+	// added type annotation
+	constructor(newValue?: T) {
 		this.value = newValue;
+		// added initial value for edges property
+		this.edges = [];
 	}
 
 	// adds an edge to this node
-	connect(towardsNode: Node<T>, weight?) {
-		const edge     = new Edge();
-		edge.weight    = weight;
+	// added added type annotation
+	connect(towardsNode: Node<T>, weight?: number) {
+		const edge = new Edge<T>();
+		// added default value for weight
+		edge.weight    = weight || 0;
 		edge.otherNode = towardsNode;
 
 		if (this.edges.includes(edge)) {
-			return Error('edge already exists');
+			// you should throw the error, not return it
+			throw new Error('edge already exists');
 		}
 
 		this.edges.push(edge);
 	}
 
-	WalkEdges(callback: Function) {
+	// added more specific function signature for better type safety
+	WalkEdges(callback: (node: Node<T>) => void) {
 		callback(this);
 
 		this.edges.forEach(edge => {
@@ -80,7 +102,8 @@ class Node<T> {
  * Edge connects one node to another
  * can optionally have a weight
  */
-class Edge {
-	weight: number;
-	otherNode: Node;
+// added generic type parameter and initial values
+class Edge<T> {
+	weight: number = 0;
+	otherNode: Node<T> = new Node();
 }
